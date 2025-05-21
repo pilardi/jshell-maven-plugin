@@ -17,6 +17,7 @@
 package com.github.johnpoth.jshell;
 
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -86,7 +87,20 @@ public class JShellMojo extends AbstractMojo {
     @Parameter
     private Map<String, String> properties;
 
+    @Parameter(
+        defaultValue = "${session}",
+        readonly = true,
+        required = true
+    )
+    private MavenSession session;
+
+    @Override
     public void execute() throws MojoExecutionException {
+        List<String> selectedProjects = session.getRequest().getSelectedProjects();
+        if (!selectedProjects.isEmpty() && !selectedProjects.contains(session.getCurrentProject().getArtifactId())) {
+            getLog().debug("Skipping Shell for: " + session.getCurrentProject().getArtifactId());
+            return;
+        }
         Optional<Module> module = ModuleLayer.boot().findModule("jdk.jshell");
         ClassLoader classLoader = module.get().getClassLoader();
         // Until https://issues.apache.org/jira/browse/MNG-6371 is resolved
